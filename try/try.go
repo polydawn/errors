@@ -53,7 +53,7 @@ import (
 	"github.com/spacemonkeygo/errors"
 )
 
-type plan struct {
+type Plan struct {
 	main    func()
 	catch   []check
 	finally func()
@@ -65,11 +65,11 @@ type check struct {
 	anyhandler func(err error)
 }
 
-func Do(f func()) *plan {
-	return &plan{main: f, finally: func() {}}
+func Do(f func()) *Plan {
+	return &Plan{main: f, finally: func() {}}
 }
 
-func (p *plan) Catch(kind *errors.ErrorClass, handler func(err *errors.Error)) *plan {
+func (p *Plan) Catch(kind *errors.ErrorClass, handler func(err *errors.Error)) *Plan {
 	p.catch = append(p.catch, check{
 		match:   kind,
 		handler: handler,
@@ -77,7 +77,7 @@ func (p *plan) Catch(kind *errors.ErrorClass, handler func(err *errors.Error)) *
 	return p
 }
 
-func (p *plan) CatchAll(handler func(err error)) *plan {
+func (p *Plan) CatchAll(handler func(err error)) *Plan {
 	p.catch = append(p.catch, check{
 		match:      nil,
 		anyhandler: handler,
@@ -85,7 +85,7 @@ func (p *plan) CatchAll(handler func(err error)) *plan {
 	return p
 }
 
-func (p *plan) Finally(f func()) *plan {
+func (p *Plan) Finally(f func()) *Plan {
 	f2 := p.finally
 	p.finally = func() {
 		f()
@@ -94,7 +94,7 @@ func (p *plan) Finally(f func()) *plan {
 	return p
 }
 
-func (p *plan) Done() {
+func (p *Plan) Done() {
 	defer func() {
 		rec := recover()
 		consumed := false
