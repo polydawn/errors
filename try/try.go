@@ -50,7 +50,18 @@
 package try
 
 import (
+	"fmt"
+
 	"github.com/spacemonkeygo/errors"
+)
+
+var (
+	// Panic type when a panic is caught that is neither a spacemonkey error, nor an ordinary golang error.
+	// For example, panic("hooray!")
+	UnknownPanicError = errors.NewClass("Unknown Error")
+
+	// The spacemonkey error key to get the original data out of an UnknownPanicError.
+	OriginalPanic = errors.GenSym()
 )
 
 type Plan struct {
@@ -136,8 +147,24 @@ func (p *Plan) Done() {
 				}
 			}
 		default:
-			// if it's not even an error type, you're a fruit: get outta here.
-			return
+			// handle the case where it's not even an error type.
+			// we'll wrap your panic in an UnknownPanicError and add the original as data for later retrieval.
+			for _, catch := range p.catch {
+				if catch.match == nil {
+					consumed = true
+					msg := fmt.Sprintf("%v", rec)
+					pan := UnknownPanicError.NewWith(msg, errors.SetData(OriginalPanic, rec))
+					catch.anyhandler(pan)
+					return
+				}
+				if UnknownPanicError.Is(catch.match) {
+					consumed = true
+					msg := fmt.Sprintf("%v", rec)
+					pan := UnknownPanicError.NewWith(msg, errors.SetData(OriginalPanic, rec))
+					catch.handler(pan.(*errors.Error))
+					return
+				}
+			}
 		}
 	}()
 	p.main()

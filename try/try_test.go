@@ -149,3 +149,152 @@ func ExampleCatchingErrorsBySpecificType() {
 	// apple handler called
 	// finally block called
 }
+
+func ExampleIntPanic() {
+	try.Do(func() {
+		fmt.Println("function called")
+		panic(3)
+	}).Finally(func() {
+		fmt.Println("finally block called")
+	}).CatchAll(func(_ error) {
+		fmt.Println("catch wildcard called")
+	}).Done()
+
+	// Output:
+	// function called
+	// catch wildcard called
+	// finally block called
+}
+
+func ExampleIntOriginalPanic() {
+	try.Do(func() {
+		fmt.Println("function called")
+		panic(3)
+	}).Finally(func() {
+		fmt.Println("finally block called")
+	}).CatchAll(func(e error) {
+		data := errors.GetData(e, try.OriginalPanic)
+		fmt.Println("catch wildcard called:", data)
+		switch data.(type) {
+		case int:
+			fmt.Println("type is int")
+		}
+	}).Done()
+
+	// Output:
+	// function called
+	// catch wildcard called: 3
+	// type is int
+	// finally block called
+}
+
+func ExampleCatchingUnknownErrorsByType() {
+	try.Do(func() {
+		fmt.Println("function called")
+		panic(3)
+	}).Finally(func() {
+		fmt.Println("finally block called")
+	}).Catch(RockError, func(e *errors.Error) {
+		fmt.Println("catch a rock")
+	}).Catch(try.UnknownPanicError, func(e *errors.Error) {
+		data := errors.GetData(e, try.OriginalPanic)
+		fmt.Println("catch UnknownPanicError called:", data)
+		switch data.(type) {
+		case int:
+			fmt.Println("type is int")
+		}
+	}).CatchAll(func(e error) {
+		fmt.Println("catch wildcard called")
+	}).Done()
+
+	// Output:
+	// function called
+	// catch UnknownPanicError called: 3
+	// type is int
+	// finally block called
+}
+
+func ExampleStringPanic() {
+	try.Do(func() {
+		fmt.Println("function called")
+		panic("hey")
+	}).Finally(func() {
+		fmt.Println("finally block called")
+	}).CatchAll(func(_ error) {
+		fmt.Println("catch wildcard called")
+	}).Done()
+
+	// Output:
+	// function called
+	// catch wildcard called
+	// finally block called
+}
+
+func ExampleStringEscalatingPanic() {
+	try.Do(func() {
+		try.Do(func() {
+			fmt.Println("function called")
+			panic("hey")
+		}).Finally(func() {
+			fmt.Println("finally block called")
+		}).Done()
+	}).CatchAll(func(e error) {
+		fmt.Println("outer error caught")
+	}).Done()
+
+	// Output:
+	// function called
+	// finally block called
+	// outer error caught
+}
+
+func ExampleStringCrashInFinally() {
+	try.Do(func() {
+		try.Do(func() {
+			fmt.Println("function called")
+		}).Finally(func() {
+			fmt.Println("finally block called")
+			panic("hey")
+		}).CatchAll(func(_ error) {
+			fmt.Println("catch wildcard called")
+		}).Done()
+	}).CatchAll(func(e error) {
+		fmt.Println("outer error caught")
+	}).Done()
+
+	// Output:
+	// function called
+	// finally block called
+	// outer error caught
+}
+
+func ExampleStringRethrowInFinally() {
+	try.Do(func() {
+		try.Do(func() {
+			fmt.Println("function called")
+			panic("hey")
+		}).Finally(func() {
+			fmt.Println("finally block called")
+		}).Catch(try.UnknownPanicError, func(e *errors.Error) {
+			data := errors.GetData(e, try.OriginalPanic)
+			fmt.Println("catch UnknownPanicError called:", data)
+			switch data.(type) {
+			case string:
+				fmt.Println("type is string")
+			}
+
+			panic(data)
+		}).CatchAll(func(_ error) {
+			fmt.Println("catch wildcard called")
+		}).Done()
+	}).CatchAll(func(e error) {
+		fmt.Println("outer error caught")
+	}).Done()
+
+	// Output:
+	// function called
+	// catch UnknownPanicError called: hey
+	// type is string
+	// finally block called
+	// outer error caught
+}
