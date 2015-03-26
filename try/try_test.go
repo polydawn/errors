@@ -268,7 +268,7 @@ func ExampleStringCrashInFinally() {
 	// outer error caught
 }
 
-func ExampleStringRethrowInFinally() {
+func ExampleStringRepanicCoversFinally() {
 	try.Do(func() {
 		try.Do(func() {
 			fmt.Println("function called")
@@ -297,4 +297,32 @@ func ExampleStringRethrowInFinally() {
 	// type is string
 	// finally block called
 	// outer error caught
+}
+
+// this is a particularly useful pattern for doing cleanup on error, but not on success.
+func ExampleObjectRepanicOriginal() {
+	obj := struct{}{}
+	try.Do(func() {
+		try.Do(func() {
+			fmt.Println("function called")
+			panic(obj)
+		}).Finally(func() {
+			fmt.Println("finally block called")
+		}).CatchAll(func(e error) {
+			fmt.Println("catch wildcard called")
+			// repanic... with the original error!
+			try.Repanic(e)
+		}).Done()
+	}).CatchAll(func(e error) {
+		// this example is a little funny, because it got re-wrapped again
+		// but the important part is yes, the (pointer equal!) object is in there.
+		data := errors.GetData(e, try.OriginalPanic)
+		fmt.Printf("outer error equals original: %v\n", data == obj)
+	}).Done()
+
+	// Output:
+	// function called
+	// catch wildcard called
+	// finally block called
+	// outer error equals original: true
 }

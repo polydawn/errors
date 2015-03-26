@@ -169,3 +169,32 @@ func (p *Plan) Done() {
 	}()
 	p.main()
 }
+
+/*
+	Panics again with the original error.
+
+	If the error is a `UnknownPanicError` (i.e., a `CatchAll` block that's handling something
+	that wasn't originally an `error` type, so it was wrapped), it will unwrap that re-panic
+	with that original error -- in other words, this is a "do the right thing" method in all scenarios.
+
+	You may simply `panic(err)` for all other typed `Catch` blocks (since they are never wraps),
+	though there's no harm in using `Repanic` consistently if you prefer.  It is also safe to
+	use `Repanic` on other non-`error` types (though you're really not helping anyone with that
+	behavior) and objects that didn't originally come in as the handler's error.  No part of
+	the error handling or finally handlers chain will change execution order as a result;
+	`panic` and `Repanic` cause identical behavior in that regard.
+*/
+func Repanic(err error) {
+	wrapper, ok := err.(*errors.Error)
+	if !ok {
+		panic(err)
+	}
+	if !wrapper.Is(UnknownPanicError) {
+		panic(err)
+	}
+	data := errors.GetData(err, OriginalPanic)
+	if data == nil {
+		panic(errors.ProgrammerError.New("misuse of try internals", errors.SetData(OriginalPanic, err)))
+	}
+	panic(data)
+}
