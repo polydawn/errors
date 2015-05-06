@@ -173,7 +173,7 @@ func ExampleIntOriginalPanic() {
 	}).Finally(func() {
 		fmt.Println("finally block called")
 	}).CatchAll(func(e error) {
-		data := errors.GetData(e, try.OriginalPanic)
+		data := errors.GetData(e, try.OriginalErrorKey)
 		fmt.Println("catch wildcard called:", data)
 		switch data.(type) {
 		case int:
@@ -197,7 +197,7 @@ func ExampleCatchingUnknownErrorsByType() {
 	}).Catch(RockError, func(e *errors.Error) {
 		fmt.Println("catch a rock")
 	}).Catch(try.UnknownPanicError, func(e *errors.Error) {
-		data := errors.GetData(e, try.OriginalPanic)
+		data := errors.GetData(e, try.OriginalErrorKey)
 		fmt.Println("catch UnknownPanicError called:", data)
 		switch data.(type) {
 		case int:
@@ -276,7 +276,7 @@ func ExampleStringRepanicCoversFinally() {
 		}).Finally(func() {
 			fmt.Println("finally block called")
 		}).Catch(try.UnknownPanicError, func(e *errors.Error) {
-			data := errors.GetData(e, try.OriginalPanic)
+			data := errors.GetData(e, try.OriginalErrorKey)
 			fmt.Println("catch UnknownPanicError called:", data)
 			switch data.(type) {
 			case string:
@@ -316,7 +316,7 @@ func ExampleObjectRepanicOriginal() {
 	}).CatchAll(func(e error) {
 		// this example is a little funny, because it got re-wrapped again
 		// but the important part is yes, the (pointer equal!) object is in there.
-		data := errors.GetData(e, try.OriginalPanic)
+		data := errors.GetData(e, try.OriginalErrorKey)
 		fmt.Printf("outer error equals original: %v\n", data == obj)
 	}).Done()
 

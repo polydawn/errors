@@ -33,8 +33,10 @@
 	(no special treatment; they'll hit `CatchAll` blocks and `Finally` blocks;
 	it would of course be silly for them to hit `Catch` blocks since those
 	use spacemonkey-errors types).  Panics with values that are not of golang's
-	`error` type at all will trigger `Finally` blocks but otherwise
-	be immediately repanicked.
+	`error` type at all will be wrapped in a spacemonkey error for the purpose
+	of handling (as an interface design, `CatchAll(interface{})` is unpleasant).
+	See `OriginalError` and `Repanic` for more invormation on handling these
+	wrapped panic objects.
 
 	A `try.Do(func() {...})` with no attached errors handlers is legal but
 	pointless.  A `try.Do(func() {...})` with no `Done()` will never run the
@@ -61,7 +63,7 @@ var (
 	UnknownPanicError = errors.NewClass("Unknown Error")
 
 	// The spacemonkey error key to get the original data out of an UnknownPanicError.
-	OriginalPanic = errors.GenSym()
+	OriginalErrorKey = errors.GenSym()
 )
 
 type Plan struct {
@@ -153,14 +155,14 @@ func (p *Plan) Done() {
 				if catch.match == nil {
 					consumed = true
 					msg := fmt.Sprintf("%v", rec)
-					pan := UnknownPanicError.NewWith(msg, errors.SetData(OriginalPanic, rec))
+					pan := UnknownPanicError.NewWith(msg, errors.SetData(OriginalErrorKey, rec))
 					catch.anyhandler(pan)
 					return
 				}
 				if UnknownPanicError.Is(catch.match) {
 					consumed = true
 					msg := fmt.Sprintf("%v", rec)
-					pan := UnknownPanicError.NewWith(msg, errors.SetData(OriginalPanic, rec))
+					pan := UnknownPanicError.NewWith(msg, errors.SetData(OriginalErrorKey, rec))
 					catch.handler(pan.(*errors.Error))
 					return
 				}
@@ -171,7 +173,24 @@ func (p *Plan) Done() {
 }
 
 /*
+	If `err` was originally another value coerced to an error by `CatchAll`,
+	this will return the original value.  Otherwise, it returns the same error
+	again.
+
+	See also `Repanic()`.
+*/
+func OriginalError(err error) interface{} {
+	data := errors.GetData(err, OriginalErrorKey)
+	if data == nil {
+		return err
+	}
+	return data
+}
+
+/*
 	Panics again with the original error.
+
+	Shorthand, equivalent to calling `panic(OriginalError(err))`
 
 	If the error is a `UnknownPanicError` (i.e., a `CatchAll` block that's handling something
 	that wasn't originally an `error` type, so it was wrapped), it will unwrap that re-panic
@@ -192,9 +211,9 @@ func Repanic(err error) {
 	if !wrapper.Is(UnknownPanicError) {
 		panic(err)
 	}
-	data := errors.GetData(err, OriginalPanic)
+	data := errors.GetData(err, OriginalErrorKey)
 	if data == nil {
-		panic(errors.ProgrammerError.New("misuse of try internals", errors.SetData(OriginalPanic, err)))
+		panic(errors.ProgrammerError.New("misuse of try internals", errors.SetData(OriginalErrorKey, err)))
 	}
 	panic(data)
 }
