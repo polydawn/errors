@@ -48,6 +48,19 @@
 	complete picture.  Note that 'finally' blocks will never be recorded
 	(unless of course they raise a new error!), since they are functions that
 	return normally.
+
+	A note about use cases: while `try` should be familiar and comfortable
+	to users of exceptions in other languages, and we feel use of a "typed"
+	panic mechanism results in effective error handling with a minimization
+	of boilerplate checking error return codes... `try` and `panic` are not
+	always the correct answer!  There are at least two situations where you
+	may want to consider converting back to handling errors as regular values:
+	If passing errors between goroutines, of course you need to pass them
+	as values.  Another situation where error returns are more capable than
+	panics is when part of multiple-returns, where the other values may have
+	been partially assembled and still may need be subject to cleanup by the
+	caller.  Fortunately, you can always use `CatchAll` to easily fence a block
+	of panic-oriented code and convert it into errors-by-value flow.
 */
 package try
 
